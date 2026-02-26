@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="SmartMark">
+  <!-- Colors tuned to teal/emerald palette for a clean SaaS look -->
+  <defs>
+    <style>
+      .bg { fill: #0f172a; }         /* slate-900 */
+      .accent { fill: #10b981; }     /* emerald-500 */
+      .stroke { stroke: #0f172a; }   /* slate-900 */
+      .line { stroke: #0f172a; }
+    </style>
+  </defs>
+
+  <!-- Rounded container -->
+  <rect x="4" y="4" width="72" height="72" rx="16" fill="#0ea5a8" opacity="0.08"/>
+  <!-- Person icon -->
+  <circle cx="40" cy="30" r="10" fill="#0f172a"/>
+  <path d="M22 60c0-10 8-18 18-18s18 8 18 18" fill="#10b981" />
+  <!-- Check mark over head -->
+  <path d="M46 26l-6 6l-4-4" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

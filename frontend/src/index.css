@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white font-sans antialiased;
+}
+
+.glass-card {
+  @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl;
+}
+
+.gradient-btn {
+  @apply bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:scale-105 transition-all duration-300 rounded-xl shadow-lg text-white;
+}
+
+.input-premium {
+  @apply bg-white/10 border border-white/20 backdrop-blur-md rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none text-white placeholder:text-gray-400;
+}

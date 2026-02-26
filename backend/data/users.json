@@ -1,0 +1,50 @@
+[
+  {
+    "_id": "061ef698-0bf9-426f-9a7e-f8d4d24d8d30",
+    "name": "Nitin Bajpai",
+    "email": "nitinbajpai2006@gmail.com",
+    "password": "a57610c372b3d96f5db8605c0c25c437bca5d413f90baf54ee2c45f5245f2df2",
+    "role": "Student",
+    "createdAt": "2026-02-25T06:40:51.946Z"
+  },
+  {
+    "_id": "ecc79d8d-5b8e-47e4-9229-b9be62e8e03b",
+    "name": "Kunal Mishra",
+    "email": "mishrakunl7800@gmail.com",
+    "password": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+    "role": "Teacher",
+    "createdAt": "2026-02-25T06:43:06.098Z"
+  },
+  {
+    "_id": "c25698f4-c994-4cd1-ad71-3f6f68e6a0c3",
+    "name": "Vranda",
+    "email": "vrandawadhva@gmail.com",
+    "password": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+    "role": "Mentor",
+    "createdAt": "2026-02-25T06:46:55.097Z"
+  },
+  {
+    "_id": "e7f59553-f9fa-4038-93f4-60d6286cd099",
+    "name": "Meenal",
+    "email": "meenalb170@gmail.com",
+    "password": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+    "role": "Student",
+    "createdAt": "2026-02-25T12:06:33.718Z"
+  },
+  {
+    "_id": "92ff564b-bb31-44c5-8a77-6450da8989fd",
+    "name": "Mahima",
+    "email": "mahima@gmail.com",
+    "password": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+    "role": "Teacher",
+    "createdAt": "2026-02-25T12:07:26.335Z"
+  },
+  {
+    "_id": "177a9b85-38a4-4403-9ea2-c98627fd9f83",
+    "name": "Vranda",
+    "email": "wadhva@gmail.com",
+    "password": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+    "role": "Mentor",
+    "createdAt": "2026-02-25T12:12:16.835Z"
+  }
+]
