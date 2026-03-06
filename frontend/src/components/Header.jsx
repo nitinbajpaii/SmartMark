@@ -18,15 +18,15 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/10 backdrop-blur-xl border-b border-white/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3">
-          <Logo size={10} />
-          <span className="font-semibold tracking-tight">SmartMark</span>
+        <Link to="/" className="group flex items-center gap-3">
+          <Logo size={10} className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-6" />
+          <span className="font-semibold tracking-tight transition-all duration-300 group-hover:text-purple-400">SmartMark</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link to="/" className="hover:text-purple-400 transition-all duration-300">Home</Link>
-          <Link to={dashPath} className="hover:text-purple-400 transition-all duration-300">Dashboard</Link>
-          <Link to="/about" className="hover:text-purple-400 transition-all duration-300">About</Link>
-          <Link to="/contact" className="hover:text-purple-400 transition-all duration-300">Contact</Link>
+        <nav className="hidden md:flex items-center gap-8 text-sm">
+          <Link to="/" className="relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-bottom-right after:scale-x-0 after:bg-purple-400 after:transition-transform after:duration-300 after:ease-in-out hover:after:origin-bottom-left hover:after:scale-x-100">Home</Link>
+          <Link to={dashPath} className="relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-bottom-right after:scale-x-0 after:bg-purple-400 after:transition-transform after:duration-300 after:ease-in-out hover:after:origin-bottom-left hover:after:scale-x-100">Dashboard</Link>
+          <Link to="/about" className="relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-bottom-right after:scale-x-0 after:bg-purple-400 after:transition-transform after:duration-300 after:ease-in-out hover:after:origin-bottom-left hover:after:scale-x-100">About</Link>
+          <Link to="/contact" className="relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-bottom-right after:scale-x-0 after:bg-purple-400 after:transition-transform after:duration-300 after:ease-in-out hover:after:origin-bottom-left hover:after:scale-x-100">Contact</Link>
         </nav>
         <div className="flex items-center gap-3">
           {user ? (

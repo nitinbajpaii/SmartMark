@@ -24,7 +24,7 @@ export default function Contact() {
         ))}
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
           <div className="text-lg font-medium">Phone</div>
-          <div className="text-gray-300 mt-2">+91 7088041390</div>
+          <div className="text-gray-300 mt-2">+91 7651931926</div>
         </div>
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
           <div className="text-lg font-medium">Location</div>
