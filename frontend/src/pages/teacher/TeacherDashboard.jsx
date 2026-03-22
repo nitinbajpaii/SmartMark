@@ -31,7 +31,7 @@ export default function TeacherDashboard() {
     if (!form.title || !form.subject) return
     setCreating(true)
     try {
-      const pos = await getAccurateLocation({ maxAccuracy: 80, timeout: 25000 })
+      const pos = await getAccurateLocation({ timeout: 15000, maximumAge: 0, maxRetries: 1 })
       const payload = {
         title: form.title,
         subject: form.subject,
@@ -46,7 +46,7 @@ export default function TeacherDashboard() {
       setForm({ title: '', subject: '' })
       await reload()
     } catch (err) {
-      alert(`Could not get accurate location (${err.message}). Please ensure GPS is enabled and you're in an open area.`)
+      alert(err.message || 'Could not get location. Please try again.')
     } finally {
       setCreating(false)
     }
@@ -54,17 +54,17 @@ export default function TeacherDashboard() {
 
   const start = async id => {
     try {
-      const pos = await getAccurateLocation({ maxAccuracy: 80, timeout: 25000 })
+      const pos = await getAccurateLocation({ timeout: 15000, maximumAge: 0, maxRetries: 1 })
       const teacherLocation = { 
         lat: pos.coords.latitude, 
         lng: pos.coords.longitude,
         accuracy: pos.coords.accuracy
       }
-      console.log('Teacher Location at Start:', teacherLocation)
+      console.log('[Teacher] Start Session Lat:', teacherLocation.lat, 'Lng:', teacherLocation.lng, 'Acc:', teacherLocation.accuracy)
       await api.startSession(id, teacherLocation)
       await reload()
     } catch (err) {
-      alert(`Could not get accurate location (${err.message}). Please allow location access to start the session.`)
+      alert(err.message || 'Could not get location. Please try again.')
     }
   }
   const end   = async id => { await api.endSession(id);   await reload() }

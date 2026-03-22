@@ -82,19 +82,19 @@ export default function StudentDashboard() {
     }
     setMarking(true)
     try {
-      // Use robust geolocation utility to handle warm-up and accuracy
-      const pos = await getAccurateLocation({ maxAccuracy: 60, timeout: 20000 })
+      // Robust location fetching with getCurrentPosition, retries, and fallbacks
+      const pos = await getAccurateLocation({ timeout: 15000, maximumAge: 0, maxRetries: 1 })
       
       const { latitude, longitude, accuracy } = pos.coords
-      console.log(`Student Location: ${latitude}, ${longitude} (Accuracy: ${accuracy}m)`)
+      console.log(`[Student] Lat: ${latitude}, Lng: ${longitude}, Acc: ${accuracy}m`)
       
+      // Allow up to 250m accuracy for indoor classrooms
       if (accuracy > 250) {
-        setStatus({ msg: `GPS signal is too weak (${Math.round(accuracy)}m). Please try moving near a window or outdoors.`, type: 'error' })
+        setStatus({ msg: `GPS accuracy too low (${Math.round(accuracy)}m). Try moving near a window.`, type: 'error' })
         setMarking(false)
         return
       }
 
-      // Let the backend do the authoritative range check.
       const res = await api.markAttendance({
         sessionId: sid,
         studentId: user._id,
@@ -109,13 +109,8 @@ export default function StudentDashboard() {
         setStatus({ msg: res.message || 'Failed to mark attendance', type: 'error' })
       }
     } catch (err) {
-      if (err?.code === 1) {
-        setStatus({ msg: 'Location permission denied. Please allow location access and try again.', type: 'error' })
-      } else if (err?.code === 3) {
-        setStatus({ msg: 'GPS timed out. Move to an open area or try again.', type: 'error' })
-      } else {
-        setStatus({ msg: 'Could not get your location. Please try again.', type: 'error' })
-      }
+      console.error('[Student Dashboard] Geo Error:', err);
+      setStatus({ msg: err.message || 'Could not get your location. Please try again.', type: 'error' })
     }
     setMarking(false)
   }

@@ -1,74 +1,78 @@
 /**
- * Robust Geolocation Fetcher
- * This utility handles common GPS issues:
- * 1. Warm-up delay (first fix is often inaccurate)
- * 2. Accuracy thresholding
- * 3. Timeout handling
+ * Enhanced Geolocation Utility
+ * Implements retries, high/low accuracy fallbacks, and detailed error handling.
  */
+
+const getPosition = (options) => {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+};
+
 export async function getAccurateLocation(options = {}) {
   const {
-    maxAccuracy = 80, // meters
-    timeout = 25000,  // ms (longer to allow GPS settle)
-    maxRetries = 3
-  } = options
+    timeout = 15000,
+    maximumAge = 0,
+    maxRetries = 1
+  } = options;
 
-  return new Promise((resolve, reject) => {
-    let watchId = null
-    let timer = null
-    let bestPos = null
-    let retries = 0
+  const highAccuracyOptions = {
+    enableHighAccuracy: true,
+    timeout,
+    maximumAge
+  };
 
-    const cleanup = () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
-      if (timer !== null) clearTimeout(timer)
-    }
+  const lowAccuracyOptions = {
+    enableHighAccuracy: false,
+    timeout,
+    maximumAge
+  };
 
-    const startWatching = () => {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude, accuracy } = pos.coords
-          console.log(`[Geo] Fix: ${latitude}, ${longitude} (+/- ${accuracy}m)`)
-          
-          if (!bestPos || accuracy < bestPos.coords.accuracy) {
-            bestPos = pos
-          }
+  let lastError = null;
 
-          // If accuracy is good enough, resolve immediately
-          if (accuracy <= maxAccuracy) {
-            console.log(`[Geo] Accurate fix found: ${accuracy}m`)
-            cleanup()
-            resolve(pos)
-          }
-        },
-        (err) => {
-          console.error(`[Geo] Error:`, err)
-          // If it's a timeout or position unavailable, we might want to retry
-          if (retries < maxRetries) {
-            retries++
-            console.log(`[Geo] Retrying... (${retries}/${maxRetries})`)
-          } else {
-            cleanup()
-            reject(err)
-          }
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      )
-    }
-
-    timer = setTimeout(() => {
-      cleanup()
-      if (bestPos) {
-        console.log(`[Geo] Timeout reached. Returning best fix: ${bestPos.coords.accuracy}m`)
-        resolve(bestPos)
-      } else {
-        reject(new Error('Geolocation timeout - no position found'))
+  // Retry Loop
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[Geo] Attempt ${attempt + 1}: Requesting high accuracy...`);
+      const pos = await getPosition(highAccuracyOptions);
+      console.log(`[Geo] Success (High Accuracy): ${pos.coords.latitude}, ${pos.coords.longitude} (+/- ${pos.coords.accuracy}m)`);
+      return pos;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Geo] High accuracy failed (Attempt ${attempt + 1}):`, err.message);
+      
+      // If permission is denied, don't bother retrying
+      if (err.code === err.PERMISSION_DENIED) {
+        throw new Error("Location permission denied. Please allow access in your browser settings.");
       }
-    }, timeout)
 
-    startWatching()
-  })
+      // On last attempt or if high accuracy failed, try fallback to low accuracy
+      if (attempt === maxRetries) {
+        try {
+          console.log(`[Geo] Final fallback: Requesting normal accuracy...`);
+          const pos = await getPosition(lowAccuracyOptions);
+          console.log(`[Geo] Success (Low Accuracy): ${pos.coords.latitude}, ${pos.coords.longitude} (+/- ${pos.coords.accuracy}m)`);
+          return pos;
+        } catch (fallbackErr) {
+          console.error(`[Geo] Fallback failed:`, fallbackErr.message);
+          throw formatError(fallbackErr);
+        }
+      }
+    }
+  }
+
+  throw formatError(lastError);
+}
+
+function formatError(err) {
+  switch (err.code) {
+    case 1: // PERMISSION_DENIED
+      return new Error("Location permission denied. Please allow access.");
+    case 2: // POSITION_UNAVAILABLE
+      return new Error("Position unavailable. Ensure GPS is on and you have a signal.");
+    case 3: // TIMEOUT
+      return new Error("Location request timed out. Please try again or move to an open area.");
+    default:
+      return new Error(err.message || "An unknown location error occurred.");
+  }
 }
