@@ -44,11 +44,11 @@ export async function getSessions() {
   return r.json()
 }
 
-export async function startSession(id) {
+export async function startSession(id, teacherLocation) {
   const r = await fetch(`${BASE_URL}/api/sessions/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
+    body: JSON.stringify({ id, teacherLocation })
   })
   return r.json()
 }

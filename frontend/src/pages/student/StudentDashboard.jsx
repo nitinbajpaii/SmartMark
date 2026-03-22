@@ -8,19 +8,6 @@ import QRScanner from '../../components/QRScanner.jsx'
 import { Percent, CalendarCheck, ListChecks, QrCode, MapPin, CheckCircle2, XCircle, ClipboardList } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-// Haversine distance calculation — unchanged business logic
-function haversine(a, b) {
-  const toRad = v => (v * Math.PI) / 180
-  const R = 6371000
-  const dLat = toRad(b.lat - a.lat)
-  const dLng = toRad(b.lng - a.lng)
-  const lat1 = toRad(a.lat)
-  const lat2 = toRad(b.lat)
-  const s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
-  const c = 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
-  return R * c
-}
-
 // Circular progress ring component
 const ProgressRing = memo(function ProgressRing({ percent }) {
   const r = 36
@@ -102,14 +89,20 @@ export default function StudentDashboard() {
           maximumAge: 30000,
         })
       )
-      const { latitude, longitude } = pos.coords
-      // Let the backend do the authoritative range check (500m).
-      // Removed the frontend 100m pre-check to avoid false rejections
-      // caused by GPS inaccuracy (10-150m typical on mobile).
+      const { latitude, longitude, accuracy } = pos.coords
+      console.log(`Student Location: ${latitude}, ${longitude} (Accuracy: ${accuracy}m)`)
+      
+      if (accuracy > 100) {
+        setStatus({ msg: `GPS accuracy too low (${Math.round(accuracy)}m). Please move to an open area or wait for a better signal.`, type: 'error' })
+        setMarking(false)
+        return
+      }
+
+      // Let the backend do the authoritative range check.
       const res = await api.markAttendance({
         sessionId: sid,
         studentId: user._id,
-        studentLocation: { lat: latitude, lng: longitude },
+        studentLocation: { lat: latitude, lng: longitude, accuracy },
         imageData: null
       })
       if (res.ok) {

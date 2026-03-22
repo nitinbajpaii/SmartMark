@@ -36,7 +36,11 @@ export default function TeacherDashboard() {
         title: form.title,
         subject: form.subject,
         teacherId: user._id,
-        teacherLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        teacherLocation: { 
+          lat: pos.coords.latitude, 
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        }
       }
       await api.createSession(payload)
       setForm({ title: '', subject: '' })
@@ -46,7 +50,22 @@ export default function TeacherDashboard() {
     }
   }
 
-  const start = async id => { await api.startSession(id); await reload() }
+  const start = async id => {
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(p => res(p), e => rej(e), { enableHighAccuracy: true }))
+      const teacherLocation = { 
+        lat: pos.coords.latitude, 
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      }
+      console.log('Teacher Location at Start:', teacherLocation)
+      await api.startSession(id, teacherLocation)
+      await reload()
+    } catch (err) {
+      alert('Could not get location. Please allow location access to start the session.')
+    }
+  }
   const end   = async id => { await api.endSession(id);   await reload() }
 
   useEffect(() => {

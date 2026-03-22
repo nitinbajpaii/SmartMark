@@ -17,13 +17,33 @@ function haversine(a, b) {
 export async function mark(req, res) {
   const { sessionId, studentId, studentLocation, imageData } = req.body || {}
   if (!sessionId || !studentId || !studentLocation) return res.status(400).json({ message: 'Missing fields' })
+  
   const sessions = await readSessions()
   const s = sessions.find(x => x._id === sessionId)
   if (!s) return res.status(404).json({ message: 'Session not found' })
   if (!s.isActive) return res.status(400).json({ message: 'Session not active' })
+
   const dist = haversine(studentLocation, s.teacherLocation)
   const RANGE_METERS = 100
-  if (dist > RANGE_METERS) return res.status(403).json({ message: `Outside allowed range (${Math.round(dist)}m away, max ${RANGE_METERS}m)` })
+  const TOLERANCE_METERS = 50 // Buffer for GPS drift
+  const MAX_RANGE = RANGE_METERS + TOLERANCE_METERS
+
+  console.log(`--- Attendance Verification ---`)
+  console.log(`Session: ${s.title} (ID: ${sessionId})`)
+  console.log(`Student ID: ${studentId}`)
+  console.log(`Teacher Location: ${s.teacherLocation.lat}, ${s.teacherLocation.lng} (Accuracy: ${s.teacherLocation.accuracy || 'N/A'}m)`)
+  console.log(`Student Location: ${studentLocation.lat}, ${studentLocation.lng} (Accuracy: ${studentLocation.accuracy || 'N/A'}m)`)
+  console.log(`Calculated Distance: ${dist.toFixed(2)}m`)
+  console.log(`Allowed Range: ${RANGE_METERS}m + ${TOLERANCE_METERS}m buffer = ${MAX_RANGE}m`)
+
+  if (dist > MAX_RANGE) {
+    console.log(`Verification Failed: Outside allowed range.`)
+    return res.status(403).json({ 
+      message: `Outside allowed range (${Math.round(dist)}m away, max ${RANGE_METERS}m + 50m buffer)` 
+    })
+  }
+  
+  console.log(`Verification Successful!`)
   const attendance = await readAttendance()
   const duplicate = attendance.find(a => a.sessionId === sessionId && a.studentId === studentId)
   if (duplicate) return res.status(409).json({ message: 'Attendance already marked for this session' })
