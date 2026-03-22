@@ -27,12 +27,14 @@ export async function list(req, res) {
 
 export async function start(req, res) {
   const { id, teacherLocation } = req.body || {}
+  const teacherIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
   const sessions = await readSessions()
   const s = sessions.find(x => x._id === id)
   if (!s) return res.status(404).json({ message: 'Not found' })
   s.isActive = true
   s.startTime = new Date().toISOString()
   if (teacherLocation) s.teacherLocation = teacherLocation
+  s.teacherIp = teacherIp
   await writeSessions(sessions)
   res.json({ ok: true })
 }

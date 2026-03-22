@@ -18,37 +18,45 @@ export async function mark(req, res) {
   const { sessionId, studentId, studentLocation, imageData } = req.body || {}
   if (!sessionId || !studentId || !studentLocation) return res.status(400).json({ message: 'Missing fields' })
   
+  const studentIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
   const sessions = await readSessions()
   const s = sessions.find(x => x._id === sessionId)
   if (!s) return res.status(404).json({ message: 'Session not found' })
   if (!s.isActive) return res.status(400).json({ message: 'Session not active' })
 
+  // GPS Calculation
   const dist = haversine(studentLocation, s.teacherLocation)
-  const ALLOWED_DISTANCE = 100
-  
-  // Accuracy Buffer Logic
+  const BASE_RANGE = 300 // meters
   const teacherAcc = s.teacherLocation.accuracy || 0
   const studentAcc = studentLocation.accuracy || 0
-  const tolerance = teacherAcc + studentAcc
-  const effectiveAllowedDistance = ALLOWED_DISTANCE + tolerance
+  const accuracyBuffer = teacherAcc + studentAcc
+  const allowedDistance = BASE_RANGE + accuracyBuffer
 
-  console.log(`--- Attendance Verification ---`)
+  // Network Check
+  const sameNetwork = s.teacherIp && studentIp && s.teacherIp === studentIp
+
+  console.log(`--- Hybrid Attendance Verification ---`)
   console.log(`Session: ${s.title} (ID: ${sessionId})`)
   console.log(`Student ID: ${studentId}`)
   console.log(`Teacher Location: ${s.teacherLocation.lat}, ${s.teacherLocation.lng} (Accuracy: ${teacherAcc}m)`)
   console.log(`Student Location: ${studentLocation.lat}, ${studentLocation.lng} (Accuracy: ${studentAcc}m)`)
-  console.log(`Raw Distance: ${dist.toFixed(2)}m`)
-  console.log(`Tolerance (Teacher + Student Acc): ${tolerance.toFixed(2)}m`)
-  console.log(`Allowed Range: ${ALLOWED_DISTANCE}m + ${tolerance.toFixed(2)}m tolerance = ${effectiveAllowedDistance.toFixed(2)}m`)
+  console.log(`Teacher IP: ${s.teacherIp}`)
+  console.log(`Student IP: ${studentIp}`)
+  console.log(`Distance: ${dist.toFixed(2)}m`)
+  console.log(`Allowed Distance (300m + ${accuracyBuffer.toFixed(2)}m buffer): ${allowedDistance.toFixed(2)}m`)
+  console.log(`Same Network Check: ${sameNetwork ? 'MATCH' : 'MISMATCH'}`)
 
-  if (dist > effectiveAllowedDistance) {
-    console.log(`Verification Failed: Outside allowed range.`)
+  const isLocationValid = dist <= allowedDistance
+  const isHybridValid = isLocationValid || sameNetwork
+
+  if (!isHybridValid) {
+    console.log(`Verification Failed: Outside range and different networks.`)
     return res.status(403).json({ 
-      message: `Location mismatch (${Math.round(dist)}m away). Allowed range is ${Math.round(effectiveAllowedDistance)}m (including ${Math.round(tolerance)}m accuracy buffer). Please try again closer to the teacher.` 
+      message: `Location verification failed. You are ${Math.round(dist)}m away (allowed: ${Math.round(allowedDistance)}m) and not on the same WiFi as the teacher.` 
     })
   }
   
-  console.log(`Verification Successful!`)
+  console.log(`Verification Successful via ${sameNetwork ? 'NETWORK' : 'GPS'}!`)
   const attendance = await readAttendance()
   const duplicate = attendance.find(a => a.sessionId === sessionId && a.studentId === studentId)
   if (duplicate) return res.status(409).json({ message: 'Attendance already marked for this session' })
