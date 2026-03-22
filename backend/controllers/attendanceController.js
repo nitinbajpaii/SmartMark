@@ -22,7 +22,8 @@ export async function mark(req, res) {
   if (!s) return res.status(404).json({ message: 'Session not found' })
   if (!s.isActive) return res.status(400).json({ message: 'Session not active' })
   const dist = haversine(studentLocation, s.teacherLocation)
-  if (dist > 100) return res.status(403).json({ message: 'Outside allowed range' })
+  const RANGE_METERS = 100
+  if (dist > RANGE_METERS) return res.status(403).json({ message: `Outside allowed range (${Math.round(dist)}m away, max ${RANGE_METERS}m)` })
   const attendance = await readAttendance()
   const duplicate = attendance.find(a => a.sessionId === sessionId && a.studentId === studentId)
   if (duplicate) return res.status(409).json({ message: 'Attendance already marked for this session' })

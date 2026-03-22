@@ -5,10 +5,20 @@ const Ctx = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  // Tracks whether we have finished reading localStorage on first mount.
+  // ProtectedRoute must NOT render until this is false.
+  const [initializing, setInitializing] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem('sa_user')
-    if (stored) setUser(JSON.parse(stored))
+    try {
+      const stored = localStorage.getItem('sa_user')
+      if (stored) setUser(JSON.parse(stored))
+    } catch {
+      // Corrupt data — clear it
+      localStorage.removeItem('sa_user')
+    } finally {
+      setInitializing(false)
+    }
   }, [])
 
   const login = async (email, password) => {
@@ -35,7 +45,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <Ctx.Provider value={{ user, login, signup, logout }}>
+    <Ctx.Provider value={{ user, initializing, login, signup, logout }}>
       {children}
     </Ctx.Provider>
   )

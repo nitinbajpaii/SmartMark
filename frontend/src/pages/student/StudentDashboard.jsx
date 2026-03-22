@@ -94,34 +94,43 @@ export default function StudentDashboard() {
     }
     setMarking(true)
     try {
+      // Longer timeout helps cold GPS fixes on mobile; cached position (30s) avoids repeated delays
       const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(p => res(p), e => rej(e), { enableHighAccuracy: true }))
+        navigator.geolocation.getCurrentPosition(res, rej, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 30000,
+        })
+      )
       const { latitude, longitude } = pos.coords
-      const session = sessions.find(s => s._id === sid)
-      if (!session) {
-        setStatus({ msg: 'Session not found', type: 'error' })
-        setMarking(false)
-        return
-      }
-      const dist = haversine({ lat: latitude, lng: longitude }, session.teacherLocation)
-      if (dist > 100) {
-        setStatus({ msg: 'You are outside the allowed range (100m)', type: 'error' })
-        setMarking(false)
-        return
-      }
-      const res = await api.markAttendance({ sessionId: sid, studentId: user._id, studentLocation: { lat: latitude, lng: longitude }, imageData: null })
+      // Let the backend do the authoritative range check (500m).
+      // Removed the frontend 100m pre-check to avoid false rejections
+      // caused by GPS inaccuracy (10-150m typical on mobile).
+      const res = await api.markAttendance({
+        sessionId: sid,
+        studentId: user._id,
+        studentLocation: { lat: latitude, lng: longitude },
+        imageData: null
+      })
       if (res.ok) {
-        setStatus({ msg: 'Attendance marked successfully!', type: 'success' })
+        setStatus({ msg: 'Attendance marked successfully! ✓', type: 'success' })
         const list = await api.getStudentAttendance(user._id)
         setAttendance(list)
       } else {
         setStatus({ msg: res.message || 'Failed to mark attendance', type: 'error' })
       }
-    } catch {
-      setStatus({ msg: 'Location permission denied', type: 'error' })
+    } catch (err) {
+      if (err?.code === 1) {
+        setStatus({ msg: 'Location permission denied. Please allow location access and try again.', type: 'error' })
+      } else if (err?.code === 3) {
+        setStatus({ msg: 'GPS timed out. Move to an open area or try again.', type: 'error' })
+      } else {
+        setStatus({ msg: 'Could not get your location. Please try again.', type: 'error' })
+      }
     }
     setMarking(false)
   }
+
 
   const totalSessions = sessions.length || 1
   const attendedSessionIds = new Set(attendance.map(a => a.sessionId))
