@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import jsQR from 'jsqr'
+import { QrCode, RefreshCw, AlertCircle, Camera } from 'lucide-react'
 import Button from './Button.jsx'
 
+// Enhanced QR Scanner with animated scan ring and better status indicators
 export default function QRScanner({ onResult }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -62,19 +64,68 @@ export default function QRScanner({ onResult }) {
   }, [])
 
   return (
-    <div>
-      <div className="rounded-xl overflow-hidden border border-white/20">
-        <video ref={videoRef} className="w-full h-60 object-cover bg-black/30" playsInline />
+    <div className="space-y-4">
+      {/* Video feed with scan ring overlay */}
+      <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-black/40">
+        <video
+          ref={videoRef}
+          className="w-full h-64 object-cover"
+          playsInline
+        />
         <canvas ref={canvasRef} className="hidden" />
+
+        {/* Scan ring animation */}
+        {active && !error && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-48 h-48 relative">
+              <div className="absolute inset-0 border-2 border-purple-400/60 rounded-2xl animate-pulse2" />
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-purple-400 rounded-tl-lg" />
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-purple-400 rounded-tr-lg" />
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-purple-400 rounded-bl-lg" />
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-purple-400 rounded-br-lg" />
+            </div>
+          </div>
+        )}
+
+        {/* Initializing overlay */}
+        {!active && !error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50">
+            <Camera className="h-8 w-8 text-gray-400 animate-pulse" />
+            <p className="text-sm text-gray-400">Initializing camera…</p>
+          </div>
+        )}
       </div>
+
+      {/* Status */}
       {error ? (
-        <div className="text-sm text-red-400 mt-2">{error}</div>
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-red-300">{error}</p>
+        </div>
       ) : (
-        <div className="text-xs text-gray-300 mt-2">{active ? 'Scanning...' : 'Initializing camera...'}</div>
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          {active ? (
+            <>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+              Scanning for QR code…
+            </>
+          ) : (
+            <>
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              Starting camera…
+            </>
+          )}
+        </div>
       )}
-      <div className="mt-3">
-        <Button className="px-4 py-2" onClick={() => setLast('')}>Reset Scanner</Button>
-      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        icon={RefreshCw}
+        onClick={() => setLast('')}
+      >
+        Reset Scanner
+      </Button>
     </div>
   )
 }
