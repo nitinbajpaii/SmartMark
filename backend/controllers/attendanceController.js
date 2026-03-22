@@ -25,21 +25,30 @@ export async function mark(req, res) {
 
   const dist = haversine(studentLocation, s.teacherLocation)
   const RANGE_METERS = 100
-  const TOLERANCE_METERS = 50 // Buffer for GPS drift
+  const TOLERANCE_METERS = 100 // Buffer for general GPS noise
+  
+  // Advanced verification: Subtract accuracy to handle indoor uncertainty
+  const studentAcc = studentLocation.accuracy || 0
+  const teacherAcc = s.teacherLocation.accuracy || 0
+  const uncertainty = studentAcc + teacherAcc
+  const effectiveDist = Math.max(0, dist - uncertainty)
+  
   const MAX_RANGE = RANGE_METERS + TOLERANCE_METERS
 
   console.log(`--- Attendance Verification ---`)
   console.log(`Session: ${s.title} (ID: ${sessionId})`)
   console.log(`Student ID: ${studentId}`)
-  console.log(`Teacher Location: ${s.teacherLocation.lat}, ${s.teacherLocation.lng} (Accuracy: ${s.teacherLocation.accuracy || 'N/A'}m)`)
-  console.log(`Student Location: ${studentLocation.lat}, ${studentLocation.lng} (Accuracy: ${studentLocation.accuracy || 'N/A'}m)`)
+  console.log(`Teacher Location: ${s.teacherLocation.lat}, ${s.teacherLocation.lng} (Accuracy: ${teacherAcc}m)`)
+  console.log(`Student Location: ${studentLocation.lat}, ${studentLocation.lng} (Accuracy: ${studentAcc}m)`)
   console.log(`Calculated Distance: ${dist.toFixed(2)}m`)
-  console.log(`Allowed Range: ${RANGE_METERS}m + ${TOLERANCE_METERS}m buffer = ${MAX_RANGE}m`)
+  console.log(`Uncertainty Buffer (Sum of Accuracies): ${uncertainty.toFixed(2)}m`)
+  console.log(`Effective Distance: ${effectiveDist.toFixed(2)}m`)
+  console.log(`Allowed Range: ${RANGE_METERS}m + ${TOLERANCE_METERS}m tolerance = ${MAX_RANGE}m`)
 
-  if (dist > MAX_RANGE) {
+  if (effectiveDist > MAX_RANGE) {
     console.log(`Verification Failed: Outside allowed range.`)
     return res.status(403).json({ 
-      message: `Outside allowed range (${Math.round(dist)}m away, max ${RANGE_METERS}m + 50m buffer)` 
+      message: `Location mismatch (${Math.round(dist)}m away). Effective distance is ${Math.round(effectiveDist)}m, but must be within ${MAX_RANGE}m. (Teacher accuracy: ${Math.round(teacherAcc)}m, Your accuracy: ${Math.round(studentAcc)}m). Please try again or move to a better spot.` 
     })
   }
   

@@ -6,6 +6,7 @@ import * as api from '../../services/api.js'
 import Modal from '../../components/Modal.jsx'
 import * as QRCode from 'qrcode'
 import { PlusCircle, QrCode, Trash2, Play, StopCircle, CheckCircle2, XCircle, ClipboardList, MapPin, Download } from 'lucide-react'
+import { getAccurateLocation } from '../../utils/geo.js'
 
 export default function TeacherDashboard() {
   const { user } = useAuth()
@@ -30,8 +31,7 @@ export default function TeacherDashboard() {
     if (!form.title || !form.subject) return
     setCreating(true)
     try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(p => res(p), e => rej(e), { enableHighAccuracy: true }))
+      const pos = await getAccurateLocation({ maxAccuracy: 80, timeout: 25000 })
       const payload = {
         title: form.title,
         subject: form.subject,
@@ -45,6 +45,8 @@ export default function TeacherDashboard() {
       await api.createSession(payload)
       setForm({ title: '', subject: '' })
       await reload()
+    } catch (err) {
+      alert(`Could not get accurate location (${err.message}). Please ensure GPS is enabled and you're in an open area.`)
     } finally {
       setCreating(false)
     }
@@ -52,8 +54,7 @@ export default function TeacherDashboard() {
 
   const start = async id => {
     try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(p => res(p), e => rej(e), { enableHighAccuracy: true }))
+      const pos = await getAccurateLocation({ maxAccuracy: 80, timeout: 25000 })
       const teacherLocation = { 
         lat: pos.coords.latitude, 
         lng: pos.coords.longitude,
@@ -63,7 +64,7 @@ export default function TeacherDashboard() {
       await api.startSession(id, teacherLocation)
       await reload()
     } catch (err) {
-      alert('Could not get location. Please allow location access to start the session.')
+      alert(`Could not get accurate location (${err.message}). Please allow location access to start the session.`)
     }
   }
   const end   = async id => { await api.endSession(id);   await reload() }

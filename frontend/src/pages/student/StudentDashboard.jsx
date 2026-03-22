@@ -7,6 +7,7 @@ import Modal from '../../components/Modal.jsx'
 import QRScanner from '../../components/QRScanner.jsx'
 import { Percent, CalendarCheck, ListChecks, QrCode, MapPin, CheckCircle2, XCircle, ClipboardList } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { getAccurateLocation } from '../../utils/geo.js'
 
 // Circular progress ring component
 const ProgressRing = memo(function ProgressRing({ percent }) {
@@ -81,19 +82,14 @@ export default function StudentDashboard() {
     }
     setMarking(true)
     try {
-      // Longer timeout helps cold GPS fixes on mobile; cached position (30s) avoids repeated delays
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 30000,
-        })
-      )
+      // Use robust geolocation utility to handle warm-up and accuracy
+      const pos = await getAccurateLocation({ maxAccuracy: 60, timeout: 20000 })
+      
       const { latitude, longitude, accuracy } = pos.coords
       console.log(`Student Location: ${latitude}, ${longitude} (Accuracy: ${accuracy}m)`)
       
-      if (accuracy > 100) {
-        setStatus({ msg: `GPS accuracy too low (${Math.round(accuracy)}m). Please move to an open area or wait for a better signal.`, type: 'error' })
+      if (accuracy > 250) {
+        setStatus({ msg: `GPS signal is too weak (${Math.round(accuracy)}m). Please try moving near a window or outdoors.`, type: 'error' })
         setMarking(false)
         return
       }
