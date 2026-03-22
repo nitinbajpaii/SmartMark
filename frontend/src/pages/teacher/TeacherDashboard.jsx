@@ -6,7 +6,7 @@ import * as api from '../../services/api.js'
 import Modal from '../../components/Modal.jsx'
 import * as QRCode from 'qrcode'
 import { PlusCircle, QrCode, Trash2, Play, StopCircle, CheckCircle2, XCircle, ClipboardList, MapPin, Download } from 'lucide-react'
-import { getAccurateLocation } from '../../utils/geo.js'
+import { getCurrentLocation } from '../../utils/locationUtils.js'
 
 export default function TeacherDashboard() {
   const { user } = useAuth()
@@ -31,15 +31,15 @@ export default function TeacherDashboard() {
     if (!form.title || !form.subject) return
     setCreating(true)
     try {
-      const pos = await getAccurateLocation({ timeout: 15000, maximumAge: 0, maxRetries: 1 })
+      const pos = await getCurrentLocation()
       const payload = {
         title: form.title,
         subject: form.subject,
         teacherId: user._id,
         teacherLocation: { 
-          lat: pos.coords.latitude, 
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
+          lat: pos.lat, 
+          lng: pos.lng,
+          accuracy: pos.accuracy
         }
       }
       await api.createSession(payload)
@@ -54,11 +54,11 @@ export default function TeacherDashboard() {
 
   const start = async id => {
     try {
-      const pos = await getAccurateLocation({ timeout: 15000, maximumAge: 0, maxRetries: 1 })
+      const pos = await getCurrentLocation()
       const teacherLocation = { 
-        lat: pos.coords.latitude, 
-        lng: pos.coords.longitude,
-        accuracy: pos.coords.accuracy
+        lat: pos.lat, 
+        lng: pos.lng,
+        accuracy: pos.accuracy
       }
       console.log('[Teacher] Start Session Lat:', teacherLocation.lat, 'Lng:', teacherLocation.lng, 'Acc:', teacherLocation.accuracy)
       await api.startSession(id, teacherLocation)

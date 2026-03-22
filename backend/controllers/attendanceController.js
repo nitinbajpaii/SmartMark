@@ -48,22 +48,22 @@ export async function mark(req, res) {
   
   if (studentLocation && studentLocation.lat && studentLocation.lng) {
     dist = haversine(studentLocation, s.teacherLocation)
-    const BASE_RANGE = 300 // Relaxed range
+    const MAX_RANGE = 100 // Strict 100m range as per requirement
     const teacherAcc = s.teacherLocation.accuracy || 0
     const studentAcc = studentLocation.accuracy || 0
-    allowedDistance = BASE_RANGE + teacherAcc + studentAcc
-    isLocationValid = dist <= allowedDistance
+    // Optional: add accuracy buffer if desired, but requirement says "distance <= 100m"
+    isLocationValid = dist <= MAX_RANGE
   }
 
   console.log(`--- 3-Layer Attendance Verification ---`)
   console.log(`Session: ${s.title} | Student: ${studentId}`)
   console.log(`QR Valid: ${qrToken ? 'YES' : 'BYPASS'} | Code Valid: YES`)
   console.log(`Network Match: ${sameNetwork ? 'YES' : 'NO'} (${studentIp} vs ${s.teacherIp})`)
-  console.log(`GPS Match: ${isLocationValid ? 'YES' : 'NO'} (${dist.toFixed(1)}m / ${allowedDistance.toFixed(1)}m)`)
+  console.log(`GPS Match: ${isLocationValid ? 'YES' : 'NO'} (${dist.toFixed(1)}m / 100m)`)
 
   if (!sameNetwork && !isLocationValid) {
     return res.status(403).json({ 
-      message: `Verification failed. You must be on the same WiFi as the teacher OR within 300m range.` 
+      message: `Verification failed. You must be on the same WiFi as the teacher OR within 100m range.` 
     })
   }
 

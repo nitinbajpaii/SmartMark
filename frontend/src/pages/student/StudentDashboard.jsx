@@ -7,7 +7,7 @@ import Modal from '../../components/Modal.jsx'
 import QRScanner from '../../components/QRScanner.jsx'
 import { Percent, CalendarCheck, ListChecks, QrCode, MapPin, CheckCircle2, XCircle, ClipboardList } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { getAccurateLocation } from '../../utils/geo.js'
+import { getCurrentLocation } from '../../utils/locationUtils.js'
 
 // Circular progress ring component
 const ProgressRing = memo(function ProgressRing({ percent }) {
@@ -91,23 +91,16 @@ export default function StudentDashboard() {
 
     setMarking(true)
     try {
-      // Robust location fetching with getCurrentPosition, retries, and fallbacks
-      const pos = await getAccurateLocation({ timeout: 15000, maximumAge: 0, maxRetries: 1 })
+      // Use standard location utility for attendance verification
+      const pos = await getCurrentLocation()
       
-      const { latitude, longitude, accuracy } = pos.coords
-      console.log(`[Student] Lat: ${latitude}, Lng: ${longitude}, Acc: ${accuracy}m`)
+      const { lat, lng, accuracy } = pos
+      console.log(`[Student] Lat: ${lat}, Lng: ${lng}, Acc: ${accuracy}m`)
       
-      // Allow up to 300m accuracy for indoor classrooms
-      if (accuracy > 300) {
-        setStatus({ msg: `GPS accuracy too low (${Math.round(accuracy)}m). Try moving near a window.`, type: 'error' })
-        setMarking(false)
-        return
-      }
-
       const res = await api.markAttendance({
         sessionId: sid,
         studentId: user._id,
-        studentLocation: { lat: latitude, lng: longitude, accuracy },
+        studentLocation: { lat, lng, accuracy },
         sessionCode: sessionCode || extraData.sessionCode,
         qrToken: extraData.qrToken || null,
         qrTimestamp: extraData.qrTimestamp || null,
