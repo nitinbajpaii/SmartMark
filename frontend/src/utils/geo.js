@@ -1,6 +1,7 @@
 /**
  * Enhanced Geolocation Utility
  * Implements retries, high/low accuracy fallbacks, and detailed error handling.
+ * Accuracy threshold: 50m. Timeout: 15s.
  */
 
 const getPosition = (options) => {
@@ -13,7 +14,8 @@ export async function getAccurateLocation(options = {}) {
   const {
     timeout = 15000,
     maximumAge = 0,
-    maxRetries = 1
+    maxRetries = 1,
+    accuracyThreshold = 50 // meters
   } = options;
 
   const highAccuracyOptions = {
@@ -35,7 +37,15 @@ export async function getAccurateLocation(options = {}) {
     try {
       console.log(`[Geo] Attempt ${attempt + 1}: Requesting high accuracy...`);
       const pos = await getPosition(highAccuracyOptions);
-      console.log(`[Geo] Success (High Accuracy): ${pos.coords.latitude}, ${pos.coords.longitude} (+/- ${pos.coords.accuracy}m)`);
+      
+      console.log(`[Geo] Fix found: ${pos.coords.latitude}, ${pos.coords.longitude} (+/- ${pos.coords.accuracy}m)`);
+      
+      // If accuracy is worse than threshold, retry unless it's the last attempt
+      if (pos.coords.accuracy > accuracyThreshold && attempt < maxRetries) {
+        console.warn(`[Geo] Accuracy (${pos.coords.accuracy}m) worse than threshold (${accuracyThreshold}m). Retrying...`);
+        continue;
+      }
+
       return pos;
     } catch (err) {
       lastError = err;
@@ -46,12 +56,12 @@ export async function getAccurateLocation(options = {}) {
         throw new Error("Location permission denied. Please allow access in your browser settings.");
       }
 
-      // On last attempt or if high accuracy failed, try fallback to low accuracy
+      // On last attempt, try fallback to low accuracy
       if (attempt === maxRetries) {
         try {
           console.log(`[Geo] Final fallback: Requesting normal accuracy...`);
           const pos = await getPosition(lowAccuracyOptions);
-          console.log(`[Geo] Success (Low Accuracy): ${pos.coords.latitude}, ${pos.coords.longitude} (+/- ${pos.coords.accuracy}m)`);
+          console.log(`[Geo] Success (Low Accuracy fallback): ${pos.coords.latitude}, ${pos.coords.longitude} (+/- ${pos.coords.accuracy}m)`);
           return pos;
         } catch (fallbackErr) {
           console.error(`[Geo] Fallback failed:`, fallbackErr.message);

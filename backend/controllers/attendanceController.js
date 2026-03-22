@@ -24,31 +24,27 @@ export async function mark(req, res) {
   if (!s.isActive) return res.status(400).json({ message: 'Session not active' })
 
   const dist = haversine(studentLocation, s.teacherLocation)
-  const RANGE_METERS = 100
-  const TOLERANCE_METERS = 100 // Buffer for general GPS noise
+  const ALLOWED_DISTANCE = 100
   
-  // Advanced verification: Subtract accuracy to handle indoor uncertainty
-  const studentAcc = studentLocation.accuracy || 0
+  // Accuracy Buffer Logic
   const teacherAcc = s.teacherLocation.accuracy || 0
-  const uncertainty = studentAcc + teacherAcc
-  const effectiveDist = Math.max(0, dist - uncertainty)
-  
-  const MAX_RANGE = RANGE_METERS + TOLERANCE_METERS
+  const studentAcc = studentLocation.accuracy || 0
+  const tolerance = teacherAcc + studentAcc
+  const effectiveAllowedDistance = ALLOWED_DISTANCE + tolerance
 
   console.log(`--- Attendance Verification ---`)
   console.log(`Session: ${s.title} (ID: ${sessionId})`)
   console.log(`Student ID: ${studentId}`)
   console.log(`Teacher Location: ${s.teacherLocation.lat}, ${s.teacherLocation.lng} (Accuracy: ${teacherAcc}m)`)
   console.log(`Student Location: ${studentLocation.lat}, ${studentLocation.lng} (Accuracy: ${studentAcc}m)`)
-  console.log(`Calculated Distance: ${dist.toFixed(2)}m`)
-  console.log(`Uncertainty Buffer (Sum of Accuracies): ${uncertainty.toFixed(2)}m`)
-  console.log(`Effective Distance: ${effectiveDist.toFixed(2)}m`)
-  console.log(`Allowed Range: ${RANGE_METERS}m + ${TOLERANCE_METERS}m tolerance = ${MAX_RANGE}m`)
+  console.log(`Raw Distance: ${dist.toFixed(2)}m`)
+  console.log(`Tolerance (Teacher + Student Acc): ${tolerance.toFixed(2)}m`)
+  console.log(`Allowed Range: ${ALLOWED_DISTANCE}m + ${tolerance.toFixed(2)}m tolerance = ${effectiveAllowedDistance.toFixed(2)}m`)
 
-  if (effectiveDist > MAX_RANGE) {
+  if (dist > effectiveAllowedDistance) {
     console.log(`Verification Failed: Outside allowed range.`)
     return res.status(403).json({ 
-      message: `Location mismatch (${Math.round(dist)}m away). Effective distance is ${Math.round(effectiveDist)}m, but must be within ${MAX_RANGE}m. (Teacher accuracy: ${Math.round(teacherAcc)}m, Your accuracy: ${Math.round(studentAcc)}m). Please try again or move to a better spot.` 
+      message: `Location mismatch (${Math.round(dist)}m away). Allowed range is ${Math.round(effectiveAllowedDistance)}m (including ${Math.round(tolerance)}m accuracy buffer). Please try again closer to the teacher.` 
     })
   }
   
