@@ -15,48 +15,59 @@ function haversine(a, b) {
 }
 
 export async function mark(req, res) {
-  const { sessionId, studentId, studentLocation, imageData } = req.body || {}
-  if (!sessionId || !studentId || !studentLocation) return res.status(400).json({ message: 'Missing fields' })
+  const { sessionId, studentId, studentLocation, sessionCode, qrToken, qrTimestamp, imageData } = req.body || {}
+  if (!sessionId || !studentId) return res.status(400).json({ message: 'Missing fields' })
   
   const studentIp = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
   const sessions = await readSessions()
   const s = sessions.find(x => x._id === sessionId)
+  
   if (!s) return res.status(404).json({ message: 'Session not found' })
   if (!s.isActive) return res.status(400).json({ message: 'Session not active' })
 
-  // GPS Calculation
-  const dist = haversine(studentLocation, s.teacherLocation)
-  const BASE_RANGE = 300 // meters
-  const teacherAcc = s.teacherLocation.accuracy || 0
-  const studentAcc = studentLocation.accuracy || 0
-  const accuracyBuffer = teacherAcc + studentAcc
-  const allowedDistance = BASE_RANGE + accuracyBuffer
+  // --- LAYER 1: Dynamic QR Token Verification ---
+  if (qrToken) {
+    // Check if QR has expired (60 seconds)
+    const now = Date.now()
+    const qrAge = (now - parseInt(qrTimestamp)) / 1000
+    if (qrAge > 60) return res.status(403).json({ message: 'QR code expired. Please scan the latest one.' })
+    if (qrToken !== s.randomToken) return res.status(403).json({ message: 'Invalid QR token.' })
+  }
 
-  // Network Check
+  // --- LAYER 2: Session Code Verification ---
+  if (!sessionCode || sessionCode !== s.sessionCode) {
+    return res.status(403).json({ message: 'Incorrect session code. Please enter the 6-digit code shown by the teacher.' })
+  }
+
+  // --- LAYER 3: Hybrid Verification (Network OR GPS) ---
   const sameNetwork = s.teacherIp && studentIp && s.teacherIp === studentIp
+  
+  let isLocationValid = false
+  let dist = 0
+  let allowedDistance = 0
+  
+  if (studentLocation && studentLocation.lat && studentLocation.lng) {
+    dist = haversine(studentLocation, s.teacherLocation)
+    const BASE_RANGE = 300 // Relaxed range
+    const teacherAcc = s.teacherLocation.accuracy || 0
+    const studentAcc = studentLocation.accuracy || 0
+    allowedDistance = BASE_RANGE + teacherAcc + studentAcc
+    isLocationValid = dist <= allowedDistance
+  }
 
-  console.log(`--- Hybrid Attendance Verification ---`)
-  console.log(`Session: ${s.title} (ID: ${sessionId})`)
-  console.log(`Student ID: ${studentId}`)
-  console.log(`Teacher Location: ${s.teacherLocation.lat}, ${s.teacherLocation.lng} (Accuracy: ${teacherAcc}m)`)
-  console.log(`Student Location: ${studentLocation.lat}, ${studentLocation.lng} (Accuracy: ${studentAcc}m)`)
-  console.log(`Teacher IP: ${s.teacherIp}`)
-  console.log(`Student IP: ${studentIp}`)
-  console.log(`Distance: ${dist.toFixed(2)}m`)
-  console.log(`Allowed Distance (300m + ${accuracyBuffer.toFixed(2)}m buffer): ${allowedDistance.toFixed(2)}m`)
-  console.log(`Same Network Check: ${sameNetwork ? 'MATCH' : 'MISMATCH'}`)
+  console.log(`--- 3-Layer Attendance Verification ---`)
+  console.log(`Session: ${s.title} | Student: ${studentId}`)
+  console.log(`QR Valid: ${qrToken ? 'YES' : 'BYPASS'} | Code Valid: YES`)
+  console.log(`Network Match: ${sameNetwork ? 'YES' : 'NO'} (${studentIp} vs ${s.teacherIp})`)
+  console.log(`GPS Match: ${isLocationValid ? 'YES' : 'NO'} (${dist.toFixed(1)}m / ${allowedDistance.toFixed(1)}m)`)
 
-  const isLocationValid = dist <= allowedDistance
-  const isHybridValid = isLocationValid || sameNetwork
-
-  if (!isHybridValid) {
-    console.log(`Verification Failed: Outside range and different networks.`)
+  if (!sameNetwork && !isLocationValid) {
     return res.status(403).json({ 
-      message: `Location verification failed. You are ${Math.round(dist)}m away (allowed: ${Math.round(allowedDistance)}m) and not on the same WiFi as the teacher.` 
+      message: `Verification failed. You must be on the same WiFi as the teacher OR within 300m range.` 
     })
   }
-  
-  console.log(`Verification Successful via ${sameNetwork ? 'NETWORK' : 'GPS'}!`)
+
+  // Mark attendance if all checks pass
   const attendance = await readAttendance()
   const duplicate = attendance.find(a => a.sessionId === sessionId && a.studentId === studentId)
   if (duplicate) return res.status(409).json({ message: 'Attendance already marked for this session' })

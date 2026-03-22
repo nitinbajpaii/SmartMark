@@ -60,6 +60,8 @@ export default function StudentDashboard() {
   const [scannedId, setScannedId] = useState('')
   const [marking, setMarking] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [sessionCode, setSessionCode] = useState('')
+  const [dynamicQR, setDynamicQR] = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -73,13 +75,20 @@ export default function StudentDashboard() {
     load()
   }, [user])
 
-  const mark = async (sessionId) => {
+  const mark = async (sessionId, extraData = {}) => {
     setStatus({ msg: '', type: '' })
     const sid = sessionId || selected
     if (!sid) {
       setStatus({ msg: 'Select or scan an active session', type: 'error' })
       return
     }
+    
+    // Check for session code if not scanning or if scanning just completed
+    if (!extraData.qrToken && !sessionCode) {
+      setStatus({ msg: 'Please enter the 6-digit session code displayed by the teacher', type: 'error' })
+      return
+    }
+
     setMarking(true)
     try {
       // Robust location fetching with getCurrentPosition, retries, and fallbacks
@@ -88,8 +97,8 @@ export default function StudentDashboard() {
       const { latitude, longitude, accuracy } = pos.coords
       console.log(`[Student] Lat: ${latitude}, Lng: ${longitude}, Acc: ${accuracy}m`)
       
-      // Allow up to 250m accuracy for indoor classrooms
-      if (accuracy > 250) {
+      // Allow up to 300m accuracy for indoor classrooms
+      if (accuracy > 300) {
         setStatus({ msg: `GPS accuracy too low (${Math.round(accuracy)}m). Try moving near a window.`, type: 'error' })
         setMarking(false)
         return
@@ -99,10 +108,15 @@ export default function StudentDashboard() {
         sessionId: sid,
         studentId: user._id,
         studentLocation: { lat: latitude, lng: longitude, accuracy },
+        sessionCode: sessionCode || extraData.sessionCode,
+        qrToken: extraData.qrToken || null,
+        qrTimestamp: extraData.qrTimestamp || null,
         imageData: null
       })
       if (res.ok) {
         setStatus({ msg: 'Attendance marked successfully! ✓', type: 'success' })
+        setSessionCode('')
+        setDynamicQR(null)
         const list = await api.getStudentAttendance(user._id)
         setAttendance(list)
       } else {
@@ -231,14 +245,27 @@ export default function StudentDashboard() {
           )}
 
           {selected && (
-            <Button
-              icon={MapPin}
-              onClick={() => mark()}
-              loading={marking}
-              className="w-full"
-            >
-              {marking ? 'Verifying location…' : 'Mark Attendance'}
-            </Button>
+            <div className="space-y-4">
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2 block">Enter Session Code</label>
+                <input
+                  type="text"
+                  maxLength="6"
+                  placeholder="6-digit code from teacher"
+                  value={sessionCode}
+                  onChange={(e) => setSessionCode(e.target.value.replace(/\D/g, ''))}
+                  className="input-premium px-4 py-3 w-full text-center text-xl tracking-widest font-mono"
+                />
+              </div>
+              <Button
+                icon={MapPin}
+                onClick={() => mark()}
+                loading={marking}
+                className="w-full"
+              >
+                {marking ? 'Verifying...' : 'Mark Attendance'}
+              </Button>
+            </div>
           )}
 
           {/* Status message */}
@@ -304,17 +331,27 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
-      {/* QR Scanner Modal */}
       <Modal open={scanOpen} onClose={() => setScanOpen(false)} title="Scan Session QR Code">
         <QRScanner onResult={(data) => {
-          setScannedId(data)
-          setSelected(data)
-          setScanOpen(false)
-          setStatus({ msg: 'Session detected via QR. Verifying location…', type: '' })
-          setTimeout(() => mark(data), 300)
+          // Dynamic QR format: sessionId|timestamp|randomToken
+          const parts = data.split('|');
+          if (parts.length === 3) {
+            const [sid, ts, token] = parts;
+            setScannedId(sid)
+            setSelected(sid)
+            setScanOpen(false)
+            setStatus({ msg: 'QR Scanned. Please enter the 6-digit session code.', type: 'success' })
+            setDynamicQR({ sessionId: sid, qrTimestamp: ts, qrToken: token })
+          } else {
+            // Legacy/Fallback support
+            setScannedId(data)
+            setSelected(data)
+            setScanOpen(false)
+            setStatus({ msg: 'Old QR detected. Please enter session code.', type: 'info' })
+          }
         }} />
         {scannedId && (
-          <p className="text-xs text-gray-500 mt-3">Session ID: <span className="font-mono">{scannedId}</span></p>
+          <p className="text-xs text-gray-500 mt-3 text-center">QR Session ID detected</p>
         )}
       </Modal>
     </div>

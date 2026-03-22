@@ -31,12 +31,21 @@ export async function start(req, res) {
   const sessions = await readSessions()
   const s = sessions.find(x => x._id === id)
   if (!s) return res.status(404).json({ message: 'Not found' })
+  
+  // Generate dynamic session details
+  const sessionCode = Math.floor(100000 + Math.random() * 900000).toString() // 6-digit code
+  const randomToken = uuid().split('-')[0] // Random short token for QR
+  
   s.isActive = true
   s.startTime = new Date().toISOString()
+  s.sessionCode = sessionCode
+  s.randomToken = randomToken
+  s.qrTimestamp = Date.now()
   if (teacherLocation) s.teacherLocation = teacherLocation
   s.teacherIp = teacherIp
+  
   await writeSessions(sessions)
-  res.json({ ok: true })
+  res.json({ ok: true, sessionCode, randomToken })
 }
 
 export async function end(req, res) {

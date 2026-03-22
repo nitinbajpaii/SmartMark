@@ -70,12 +70,25 @@ export default function TeacherDashboard() {
   const end   = async id => { await api.endSession(id);   await reload() }
 
   useEffect(() => {
+    let timer;
     const gen = async () => {
       if (!qrFor) return setQrDataUrl('')
-      const url = await QRCode.toDataURL(qrFor._id, { width: 256, margin: 2 })
+      
+      // Dynamic QR: sessionId|timestamp|randomToken
+      const qrValue = `${qrFor._id}|${qrFor.qrTimestamp || Date.now()}|${qrFor.randomToken || ''}`
+      const url = await QRCode.toDataURL(qrValue, { width: 256, margin: 2 })
       setQrDataUrl(url)
+
+      // Refresh QR every 30 seconds if session is active
+      if (qrFor.isActive) {
+        timer = setTimeout(async () => {
+          await reload();
+          // The re-render will trigger this effect again with updated qrFor
+        }, 30000);
+      }
     }
     gen()
+    return () => clearTimeout(timer);
   }, [qrFor])
 
   useEffect(() => {
@@ -279,6 +292,13 @@ export default function TeacherDashboard() {
               <div className="text-center space-y-1">
                 <p className="font-semibold text-white">{qrFor?.title}</p>
                 <p className="text-sm text-gray-400">{qrFor?.subject}</p>
+                {qrFor?.isActive && (
+                  <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Session Code</p>
+                    <p className="text-3xl font-mono font-bold text-white tracking-widest mt-1">{qrFor.sessionCode}</p>
+                    <p className="text-[10px] text-amber-400 mt-2">QR refreshes every 30s</p>
+                  </div>
+                )}
               </div>
               <a
                 href={qrDataUrl}
